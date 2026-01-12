@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:ar_assistant/api/api_client.dart';
@@ -93,7 +94,7 @@ class _ChatPageState extends State<ChatPage> {
       }
       print('coming here..done');
     } catch (e) {
-      print('coing here .. catch..$e');
+      print('coming here .. catch..$e');
       final msg = findMessageById(loadingId);
       if (msg != null) {
         _chatController.removeMessage(msg);
@@ -154,9 +155,6 @@ class _ChatPageState extends State<ChatPage> {
                       setState(() {
                         _textController.text = text;
                       });
-
-                      // _sendMessageWithRetry(message);
-                      // _textController.clear();
                     },
                   ),
                 );
@@ -191,7 +189,6 @@ class _ChatPageState extends State<ChatPage> {
                         ),
 
                   currentUserId: 'user1',
-                  // onAttachmentTap: () => showAttachmentSheet(),
                   chatController: _chatController,
                   onMessageSend: (message) {
                     final textMessage = TextMessage(
@@ -205,8 +202,6 @@ class _ChatPageState extends State<ChatPage> {
                     if (!_hasAnyMessage) {
                       setState(() => _hasAnyMessage = true);
                     }
-                    // storedMessages.add(textMessage);
-                    // sendQueryToAPI(text: message);
 
                     _sendMessageWithRetry(textMessage);
                     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -339,30 +334,45 @@ class _ChatPageState extends State<ChatPage> {
                               alignment: isSentByMe
                                   ? Alignment.centerRight
                                   : Alignment.centerLeft,
-                              child: Shimmer.fromColors(
-                                baseColor:
-                                    themeController.currentMode ==
-                                        AppThemeMode.light
-                                    ? Colors.grey.shade300
-                                    : Colors.grey.shade700,
-                                highlightColor:
-                                    themeController.currentMode ==
-                                        AppThemeMode.light
-                                    ? Colors.grey.shade100
-                                    : Colors.grey.shade500,
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    vertical: 6,
-                                    horizontal: 12,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: EdgeInsets.only(left: 15.0),
+                                    child: Text(
+                                      message.text,
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
                                   ),
-                                  padding: const EdgeInsets.all(14),
-                                  width: 160,
-                                  height: 20,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade300,
-                                    borderRadius: BorderRadius.circular(16),
+                                  Shimmer.fromColors(
+                                    baseColor:
+                                        themeController.currentMode ==
+                                            AppThemeMode.light
+                                        ? Colors.grey.shade300
+                                        : Colors.grey.shade700,
+                                    highlightColor:
+                                        themeController.currentMode ==
+                                            AppThemeMode.light
+                                        ? Colors.grey.shade100
+                                        : Colors.grey.shade500,
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                        horizontal: 12,
+                                      ),
+                                      padding: const EdgeInsets.all(14),
+                                      width: 160,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade300,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             );
                           }
@@ -508,7 +518,7 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _sendMessageWithRetry(TextMessage userMessage) async {
     _setMessageStatus(userMessage.id, MessageStatus.sending);
-
+    int seconds = 0;
     final loadingId = "loading_${Random().nextInt(9999999)}";
 
     try {
@@ -517,10 +527,39 @@ class _ChatPageState extends State<ChatPage> {
           id: loadingId,
           authorId: 'user2',
           createdAt: DateTime.now(),
-          text: '',
+          text: 'Thinking',
           metadata: {'loading': true},
         ),
       );
+
+      // Start timer to update every second
+      Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+
+        seconds++;
+        final String updatedText;
+        if (seconds < 60) {
+          updatedText = "Thinking for ${seconds}s";
+        } else {
+          updatedText = "Deep Thinking for ${seconds}s";
+        }
+
+        final msg = _chatController.messages.firstWhere(
+          (m) => m.id == loadingId,
+        );
+
+        final updated = TextMessage(
+          id: loadingId,
+          authorId: 'user2',
+          createdAt: DateTime.now(),
+          text: updatedText,
+          metadata: {'loading': true},
+        );
+        _chatController.updateMessage(msg, updated);
+      });
 
       final response = await ApiClient().dio.post(
         ApiConfig.QUERY_REQUEST,
