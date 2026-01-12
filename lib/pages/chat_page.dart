@@ -533,7 +533,7 @@ class _ChatPageState extends State<ChatPage> {
       );
 
       // Start timer to update every second
-      Timer.periodic(const Duration(seconds: 1), (timer) {
+      Timer timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!mounted) {
           timer.cancel();
           return;
@@ -547,9 +547,7 @@ class _ChatPageState extends State<ChatPage> {
           updatedText = "Deep Thinking for ${seconds}s";
         }
 
-        final msg = _chatController.messages.firstWhere(
-          (m) => m.id == loadingId,
-        );
+        final msg = findMessageById(loadingId);
 
         final updated = TextMessage(
           id: loadingId,
@@ -558,13 +556,14 @@ class _ChatPageState extends State<ChatPage> {
           text: updatedText,
           metadata: {'loading': true},
         );
-        _chatController.updateMessage(msg, updated);
+        _chatController.updateMessage(msg!, updated);
       });
 
       final response = await ApiClient().dio.post(
         ApiConfig.QUERY_REQUEST,
         data: {'question': userMessage.text, 'thread_id': Uuid().v4()},
       );
+      timer.cancel();
 
       final loadingMsg = findMessageById(loadingId);
       if (loadingMsg != null) {
