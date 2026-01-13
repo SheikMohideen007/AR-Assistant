@@ -138,9 +138,13 @@ class _ChatPageState extends State<ChatPage> {
       drawer: buildCustomDrawer(context),
       appBar: AppBar(
         elevation: 0,
-        title: Text(
-          "VT-360 Assistant",
-          style: theme.appBarTheme.titleTextStyle,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(width: 40, child: Image.asset('assets/robot.png')),
+            SizedBox(width: 5),
+            Text("VT-360 Assistant", style: theme.appBarTheme.titleTextStyle),
+          ],
         ),
         centerTitle: true,
         actions: [
@@ -193,6 +197,19 @@ class _ChatPageState extends State<ChatPage> {
 
                   currentUserId: 'user1',
                   chatController: _chatController,
+                  onMessageLongPress:
+                      (context, message, {required details, required index}) {
+                        if (message is TextMessage) {
+                          HapticFeedback.lightImpact();
+                          final isSentByMe = message.authorId == 'user1';
+                          _showMessagePopup(
+                            context,
+                            message,
+                            isSentByMe,
+                            details,
+                          );
+                        }
+                      },
                   onMessageSend: (message) {
                     final textMessage = TextMessage(
                       id: Uuid().v4(),
@@ -695,5 +712,70 @@ class _ChatPageState extends State<ChatPage> {
 
   Message? findMessageById(String id) {
     return _chatController.messages.firstWhere((m) => m.id == id);
+  }
+
+  void _showMessagePopup(
+    BuildContext context,
+    TextMessage message,
+    bool isSentByMe,
+    LongPressStartDetails details,
+  ) {
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final RenderBox box = context.findRenderObject() as RenderBox;
+    final Offset position = details.globalPosition;
+
+    final Offset offset = isSentByMe
+        ? Offset(position.dx - 100, position.dy)
+        : Offset(position.dx, position.dy);
+
+    showMenu(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusGeometry.circular(25),
+      ),
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(
+          offset,
+          offset.translate(box.size.width, box.size.height),
+        ),
+        Offset.zero & overlay.size,
+      ),
+      items: <PopupMenuEntry>[
+        PopupMenuItem(
+          value: 'copy',
+          child: ListTile(
+            leading: const Icon(Icons.copy),
+            title: const Text('Copy'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: ListTile(
+            leading: const Icon(Icons.delete, color: Colors.red),
+            title: const Text('Delete', style: TextStyle(color: Colors.red)),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == null) return;
+
+      switch (value) {
+        case 'copy':
+          Clipboard.setData(ClipboardData(text: message.text));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Message copied')));
+          break;
+        case 'delete':
+          _chatController.removeMessage(message);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Message deleted')));
+          break;
+      }
+    });
   }
 }
